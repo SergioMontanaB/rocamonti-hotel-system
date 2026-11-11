@@ -1,0 +1,37 @@
+# Entorno virtual creado por uv
+.venv/
+env/
+venv/
+ENV/
+
+# Caches y archivos compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+wheels/
+
+# Herramientas de desarrollo (Ruff, Pytest, Mypy)
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.tox/
+
+# Datos locales y sensibles del hotel (mantiene sample/ pero ignora real/)
+data/real/*
+!data/real/.gitkeep
+
+# IDEs y Editores (VS Code)
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+*.log
