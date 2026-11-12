@@ -1,3 +1,4 @@
+import re
 from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 
@@ -38,3 +39,31 @@ class Room:
         self.room_number = room_number
         self.room_type = room_type
         self.nightly_rate = rate
+
+
+
+class DocumentType(Enum):
+    PASSPORT = "Passport"
+    COLOMBIAN_ID_CARD = "ID Card"
+
+EMAIL_REGEX = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+PHONE_REGEX = r"^\+?[0-9]{7,15}$"
+class Guest:
+    def __init__(self, name: str, email: str, phone_number: str, document_type: DocumentType, document_number: str) -> None:
+        if not isinstance(name, str) or not name.strip():
+            raise DataValidationError("Name must be a non-empty string.")
+        if not isinstance(email, str) or not re.match(EMAIL_REGEX, email.strip()):
+            raise DataValidationError("Email must be a valid email address.")
+        if not isinstance(phone_number, str) or not re.match(PHONE_REGEX, phone_number.strip()):   
+            raise DataValidationError("Phone number must have a valid fomat.")
+        
+        if not isinstance(document_type, DocumentType):
+            raise DataValidationError("Invalid document type.")
+        if not isinstance(document_number, str) or not document_number.strip():
+            raise DataValidationError("Document number must be a non-empty string.")
+
+        self.name = name
+        self.email = email.strip().lower()
+        self.phone_number = phone_number
+        self.document_type = document_type
+        self.document_number = document_number

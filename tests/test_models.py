@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 
 from rocamonti.exceptions import DataValidationError
-from rocamonti.models import Room, RoomType
+from rocamonti.models import Room, RoomType, Guest, DocumentType
 
 VALID_RATE = Decimal("150000")
 
@@ -35,6 +35,40 @@ def test_invalid_rate(bad_rate):
     with pytest.raises(DataValidationError, match="rate"):
         Room(101, RoomType.SINGLE, bad_rate)
 
-
 def test_rate_rounds_half_up():
     assert Room(101, RoomType.SINGLE, Decimal("100.005")).nightly_rate == Decimal("100.01")
+
+
+def test_valid_guest():
+    guest= Guest("John Doe","johndoe@example.com","1234567890",DocumentType.PASSPORT,"A1234567")
+    assert guest.name == "John Doe"
+    assert guest.email == "johndoe@example.com"
+    assert guest.phone_number == "1234567890"
+    assert guest.document_type == DocumentType.PASSPORT
+    assert guest.document_number == "A1234567"
+
+
+@pytest.mark.parametrize("bad_name", ["", " ", None, 123])
+def test_invalid_guest_name(bad_name):
+    with pytest.raises(DataValidationError, match="Name"):
+        Guest(bad_name, email="johndoe@example.com", 
+            phone_number="1234567890", 
+            document_type=DocumentType.PASSPORT, 
+            document_number="A1234567")
+
+@pytest.mark.parametrize("bad_email", ["", " ", None, 123, "johndoe", "johndoe@", "@example.com", 
+                                       "johndoe@example", "johndoe@example.", "john doe@example.com"])
+def test_invalid_guest_email(bad_email):
+    with pytest.raises(DataValidationError, match="Email"):
+        Guest(name="John Doe", email=bad_email, 
+            phone_number="1234567890", 
+            document_type=DocumentType.PASSPORT, 
+            document_number="A1234567")
+
+@pytest.mark.parametrize("bad_phone",["", " ", None, 123, "123-456-7890", "(123) 456-7890","123456"])
+def test_invalid_guest_phone(bad_phone):
+    with pytest.raises(DataValidationError, match="Phone number"):
+        Guest(name="John Doe", email="johndoe@example.com", 
+            phone_number= bad_phone, 
+            document_type=DocumentType.PASSPORT, 
+            document_number="A1234567")
