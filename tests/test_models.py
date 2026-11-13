@@ -72,3 +72,19 @@ def test_invalid_guest_phone(bad_phone):
             phone_number= bad_phone, 
             document_type=DocumentType.PASSPORT, 
             document_number="A1234567")
+
+@pytest.mark.parametrize("bad_document_type", [None, "Passport", 123])
+def test_invalid_guest_document_type(bad_document_type):
+    with pytest.raises(DataValidationError, match="document type"):
+        Guest(name="John Doe", email="johndoe@example.com", 
+                        phone_number="1234567890", 
+                        document_type=bad_document_type, 
+                        document_number ="A1234567")
+
+@pytest.mark.parametrize("bad_document_number", ["", " ", None, 123])
+def test_invalid_guest_document_number(bad_document_number):
+    with pytest.raises(DataValidationError, match= "Document number"):
+        Guest(name="John Doe", email="johndoe@example.com", 
+                phone_number="1234567890", 
+                document_type=DocumentType.PASSPORT, 
+                document_number =bad_document_number)
