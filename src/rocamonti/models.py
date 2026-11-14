@@ -79,3 +79,27 @@ class Guest:
     @property
     def guest_id(self):
         return f"{self.document_type.name}-{self.document_number}"
+
+
+class Reservation:
+    #Validations here 
+
+    def __init__(self, guest, room, check_in, check_out):
+        self.guest = guest
+        self.room = room
+        self.check_in = check_in
+        self.check_out = check_out
+       
+        self.status = ReservationStatus.CONFIRMED
+
+        self._nightly_rate_snapshot = room.nightly_rate
+
+    @property
+    def nights(self) -> int:
+        return (self.check_out - self.check_in).days
+    @property
+    def total_cost(self) -> Decimal:
+        cost = self._nightly_rate_snapshot * Decimal(self.nights)
+        return cost.quantize(Decimal("0.01"))
+
+    

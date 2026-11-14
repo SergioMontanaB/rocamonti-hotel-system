@@ -1,9 +1,17 @@
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
 
 from rocamonti.exceptions import DataValidationError
-from rocamonti.models import DocumentType, Guest, Room, RoomType
+from rocamonti.models import (
+    DocumentType,
+    Guest,
+    Reservation,
+    ReservationStatus,
+    Room,
+    RoomType,
+)
 
 VALID_RATE = Decimal(150000)
 
@@ -128,3 +136,29 @@ def test_guest_id_property():
     assert guest.guest_id == "PASSPORT-A1234567"
 
 
+
+
+
+@pytest.fixture
+def sample_guest():
+    return Guest("John Doe", "johndoe@example.com", "1234567890", DocumentType.PASSPORT, "A1234567")
+@pytest.fixture
+def sample_room():
+    return Room(101, RoomType.SINGLE, Decimal("150000.00"))
+
+def test_valid_reservation(sample_guest, sample_room):
+    check_in = date.today() + timedelta(days=1)
+    check_out = check_in + timedelta(days=2)
+    res = Reservation(sample_guest, sample_room,check_in, check_out)
+
+    assert res.guest == sample_guest
+    assert res.room == sample_room
+    assert res.nights == 2
+    assert res.total_cost == Decimal("300000.00")
+    assert res.status == ReservationStatus.CONFIRMED
+
+def test_equal_dates(sample_guest, sample_room):
+    check_in = date.today()
+    check_out = check_in
+    with pytest.raises(ValueError):
+        Reservation(sample_guest, sample_room, check_in, check_out)
