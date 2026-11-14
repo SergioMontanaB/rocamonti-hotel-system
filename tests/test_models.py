@@ -3,9 +3,9 @@ from decimal import Decimal
 import pytest
 
 from rocamonti.exceptions import DataValidationError
-from rocamonti.models import Room, RoomType, Guest, DocumentType
+from rocamonti.models import DocumentType, Guest, Room, RoomType
 
-VALID_RATE = Decimal("150000")
+VALID_RATE = Decimal(150000)
 
 
 def test_valid_room():
@@ -57,7 +57,7 @@ def test_invalid_guest_name(bad_name):
             document_number="A1234567")
 
 @pytest.mark.parametrize("bad_email", ["", " ", None, 123, "johndoe", "johndoe@", "@example.com", 
-                                       "johndoe@example", "johndoe@example.", "john doe@example.com"])
+                                       "johndoe@example", "johndoe@example.", "john doe@example.com", "a@b..c"])
 def test_invalid_guest_email(bad_email):
     with pytest.raises(DataValidationError, match="Email"):
         Guest(name="John Doe", email=bad_email, 
@@ -65,7 +65,7 @@ def test_invalid_guest_email(bad_email):
             document_type=DocumentType.PASSPORT, 
             document_number="A1234567")
 
-@pytest.mark.parametrize("bad_phone",["", " ", None, 123, "123-456-7890", "(123) 456-7890","123456"])
+@pytest.mark.parametrize("bad_phone",["", " ", None, 123, "123456", "abc-def-ghij"])
 def test_invalid_guest_phone(bad_phone):
     with pytest.raises(DataValidationError, match="Phone number"):
         Guest(name="John Doe", email="johndoe@example.com", 
@@ -73,7 +73,7 @@ def test_invalid_guest_phone(bad_phone):
             document_type=DocumentType.PASSPORT, 
             document_number="A1234567")
 
-@pytest.mark.parametrize("bad_document_type", [None, "Passport", 123])
+@pytest.mark.parametrize("bad_document_type", [None, "Passport", 123, "", " "])
 def test_invalid_guest_document_type(bad_document_type):
     with pytest.raises(DataValidationError, match="document type"):
         Guest(name="John Doe", email="johndoe@example.com", 
@@ -88,3 +88,43 @@ def test_invalid_guest_document_number(bad_document_number):
                 phone_number="1234567890", 
                 document_type=DocumentType.PASSPORT, 
                 document_number =bad_document_number)
+
+
+@pytest.mark.parametrize("email, raw_phone, expected_clean_phone", [("nombre.apellido+tag@dominio.co", "+573001234567", "+573001234567"),
+        ("user123@sub.domain.org", "+1-800-555-0199", "+18005550199"),
+        ("test@example.com", "(123) 456-7890", "1234567890")]) 
+
+def test_valid_guest_special_formats(email, raw_phone, expected_clean_phone):
+    guest = Guest(name="Jane Doe", email=email, 
+                  phone_number=raw_phone, 
+                  document_type=DocumentType.COLOMBIAN_ID_CARD, 
+                  document_number="A1234567")
+    assert guest.email == email.lower()
+    assert guest.phone_number == expected_clean_phone
+def test_actual_phone_format():
+    guest = Guest(name="Jane Doe", email="jane@example.com", 
+                  phone_number="310 762 8219", 
+                  document_type=DocumentType.COLOMBIAN_ID_CARD, 
+                  document_number="A1234567")
+    assert guest.phone_number == "3107628219"
+
+
+def test_guest_normalization():
+    guest = Guest(name=" John Doe ", email="John.Doe@Example.com", 
+                  phone_number=" 123-456-7890 ", 
+                  document_type=DocumentType.PASSPORT, 
+                  document_number=" a1234567 ")
+    assert guest.name == "John Doe"
+    assert guest.email == "john.doe@example.com"
+    assert guest.phone_number == "1234567890"
+    assert guest.document_number == "A1234567"
+
+
+def test_guest_id_property():
+    guest = Guest(name="John Doe", email="johndoe@example.com", 
+                  phone_number="1234567890", 
+                  document_type=DocumentType.PASSPORT, 
+                  document_number="A1234567")
+    assert guest.guest_id == "PASSPORT-A1234567"
+
+

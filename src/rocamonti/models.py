@@ -18,6 +18,9 @@ class RoomType(Enum):
     APARTMENT = "Apartment"
     FAMILY = "Family"
 
+EMAIL_REGEX = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+"
+PHONE_REGEX = r"\+?[0-9]{7,15}"
+
 
 class Room:
     def __init__(self, room_number: int, room_type: RoomType, nightly_rate: Decimal) -> None:
@@ -43,27 +46,36 @@ class Room:
 
 
 class DocumentType(Enum):
-    PASSPORT = "Passport".strip().upper()
+    PASSPORT = "Passport"
     COLOMBIAN_ID_CARD = "ID Card"
 
-EMAIL_REGEX = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+"
-PHONE_REGEX = r"\+?[0-9]{7,15}"
+
 class Guest:
     def __init__(self, name: str, email: str, phone_number: str, document_type: DocumentType, document_number: str) -> None:
         if not isinstance(name, str) or not name.strip():
             raise DataValidationError("Name must be a non-empty string.")
+        
         if not isinstance(email, str) or not re.fullmatch(EMAIL_REGEX, email.strip()):
             raise DataValidationError("Email must be a valid email address.")
-        if not isinstance(phone_number, str) or not re.fullmatch(PHONE_REGEX, phone_number.strip()):   
+        
+        if not isinstance(phone_number, str):   
+            raise DataValidationError("Phone number must have a valid format.")
+        cleaned_phone = re.sub(r"[ \.\-\(\)]", "", phone_number).strip()
+        if not re.fullmatch(PHONE_REGEX, cleaned_phone):
             raise DataValidationError("Phone number must have a valid format.")
         
         if not isinstance(document_type, DocumentType):
             raise DataValidationError("Invalid document type.")
+        
         if not isinstance(document_number, str) or not document_number.strip():
             raise DataValidationError("Document number must be a non-empty string.")
 
         self.name = name.strip()
         self.email = email.strip().lower()
-        self.phone_number = phone_number.strip()
+        self.phone_number = cleaned_phone.strip()
         self.document_type = document_type
-        self.document_number = document_number.strip()
+        self.document_number = document_number.strip().upper()
+
+    @property
+    def guest_id(self):
+        return f"{self.document_type.name}-{self.document_number}"
