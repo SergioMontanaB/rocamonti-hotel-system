@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -160,5 +160,31 @@ def test_valid_reservation(sample_guest, sample_room):
 def test_equal_dates(sample_guest, sample_room):
     check_in = date.today()
     check_out = check_in
-    with pytest.raises(ValueError):
+    with pytest.raises(DataValidationError):
         Reservation(sample_guest, sample_room, check_in, check_out)
+
+def test_check_out_before_check_in(sample_guest, sample_room):
+    check_in = date.today()
+    check_out = check_in - timedelta(days=1)
+    with pytest.raises(DataValidationError):
+        Reservation(sample_guest, sample_room, check_in, check_out)
+
+@pytest.mark.parametrize("bad_check_in, bad_check_out", [
+    ("2024-01-01", "2024-01-02"),
+    (123, 456),
+    (None, None),
+    ("2024-01-01", None),
+    (datetime.now(), datetime.now() + timedelta(days=1))
+])
+def test_bad_date(sample_guest, sample_room, bad_check_in, bad_check_out):
+    with pytest.raises(DataValidationError):
+        Reservation(sample_guest, sample_room, bad_check_in, bad_check_out)
+
+def one_night_reservation(sample_guest, sample_room):
+    check_in = date.today() + timedelta(days=1)
+    check_out = check_in + timedelta(days=1)
+    res = Reservation(sample_guest, sample_room, check_in, check_out)
+
+    assert res.status == ReservationStatus.CONFIRMED
+    assert res.nights == 1
+    assert res.total_cost == sample_room.price

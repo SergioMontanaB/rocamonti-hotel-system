@@ -1,4 +1,5 @@
 import re
+from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 
@@ -24,6 +25,7 @@ PHONE_REGEX = r"\+?[0-9]{7,15}"
 
 class Room:
     def __init__(self, room_number: int, room_type: RoomType, nightly_rate: Decimal) -> None:
+
         if not isinstance(room_number, int) or isinstance(room_number, bool):
             raise DataValidationError("Room number must be an integer.")
         if room_number <= 0:
@@ -82,18 +84,32 @@ class Guest:
 
 
 class Reservation:
-    #Validations here 
 
-    def __init__(self, guest, room, check_in, check_out):
+    def __init__(self, guest: Guest, room: Room, check_in: date, check_out: date, status=ReservationStatus.CONFIRMED):
+        if not isinstance(guest, Guest):
+            raise DataValidationError("Guest must be a valid Guest instance.")
+        if not isinstance(room, Room):
+            raise DataValidationError("Room must be a valid Room instance.")
+        if not isinstance(check_in, date) or isinstance(check_in, datetime):
+            raise DataValidationError("Check-in must be a date.")
+        if not isinstance(check_out, date) or isinstance(check_out, datetime):
+            raise DataValidationError("Check-out must be a date.")
+        if check_out <= check_in:
+            raise DataValidationError("Check-out must be after check-in.")
+        if not isinstance (status, ReservationStatus):
+            raise DataValidationError("Reservation status must be a valid ReservationStatus enum.")    
+        if check_in == check_out:
+            raise DataValidationError("Check-in and check-out cannot be the same.")
+        
         self.guest = guest
         self.room = room
         self.check_in = check_in
         self.check_out = check_out
        
-        self.status = ReservationStatus.CONFIRMED
+        self.status = status 
 
         self._nightly_rate_snapshot = room.nightly_rate
-
+    
     @property
     def nights(self) -> int:
         return (self.check_out - self.check_in).days
