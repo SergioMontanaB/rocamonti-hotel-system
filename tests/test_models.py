@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from rocamonti.exceptions import DataValidationError
+from rocamonti.exceptions import ConflictError, DataValidationError
 from rocamonti.models import (
     DocumentType,
     Guest,
@@ -160,13 +160,13 @@ def test_valid_reservation(sample_guest, sample_room):
 def test_equal_dates(sample_guest, sample_room):
     check_in = date.today()
     check_out = check_in
-    with pytest.raises(DataValidationError):
+    with pytest.raises(ConflictError):
         Reservation(sample_guest, sample_room, check_in, check_out)
 
 def test_check_out_before_check_in(sample_guest, sample_room):
     check_in = date.today()
     check_out = check_in - timedelta(days=1)
-    with pytest.raises(DataValidationError):
+    with pytest.raises(ConflictError):
         Reservation(sample_guest, sample_room, check_in, check_out)
 
 @pytest.mark.parametrize("bad_check_in, bad_check_out", [
@@ -180,11 +180,44 @@ def test_bad_date(sample_guest, sample_room, bad_check_in, bad_check_out):
     with pytest.raises(DataValidationError):
         Reservation(sample_guest, sample_room, bad_check_in, bad_check_out)
 
-def one_night_reservation(sample_guest, sample_room):
+def test_one_night_reservation(sample_guest, sample_room):
     check_in = date.today() + timedelta(days=1)
     check_out = check_in + timedelta(days=1)
     res = Reservation(sample_guest, sample_room, check_in, check_out)
 
     assert res.status == ReservationStatus.CONFIRMED
     assert res.nights == 1
-    assert res.total_cost == sample_room.price
+    assert res.total_cost == sample_room.nightly_rate
+
+@pytest.mark.parametrize("bad_guest", [None, "NotAGuest", 123])
+def test_bad_guest(sample_room, bad_guest):
+    with pytest.raises(DataValidationError):
+        Reservation(bad_guest, sample_room, date.today(), date.today() + timedelta(days=1))
+
+@pytest.mark.parametrize("bad_room", [None, "NotARoom", 123])
+def test_bad_room(sample_guest, bad_room):
+    with pytest.raises(DataValidationError):
+        Reservation(sample_guest, bad_room, date.today(), date.today() + timedelta(days=1))
+
+@pytest.mark.parametrize("bad_status", [None, "NotAStatus", 123])
+def test_bad_status(sample_guest, sample_room, bad_status):
+    with pytest.raises(DataValidationError):
+        Reservation(sample_guest, sample_room, date.today(), date.today() + timedelta(days=1), status=bad_status)
+
+def test_reservation_rate_snapshot(sample_guest, sample_room):
+    check_in = date.today()
+    check_out = check_in + timedelta(days=2)
+    res = Reservation(sample_guest, sample_room, check_in, check_out)
+
+    assert res.total_cost == Decimal("300000.00")
+    sample_room.nightly_rate = Decimal("100000.00")
+    assert res.total_cost == Decimal("300000.00")
+
+@pytest.mark.parametrize("nights", [1, 2, 3])
+def test_total_cost_nights(sample_guest, sample_room, nights):
+    check_in = date.today()
+    check_out = check_in + timedelta(days=nights)
+    res = Reservation(sample_guest, sample_room, check_in, check_out)
+    assert res.nights == nights
+    assert res.total_cost == sample_room.nightly_rate * nights
+    

@@ -13,8 +13,11 @@ class InvalidTransitionError(HotelError):
 class StorageError(HotelError):
     """Exception raised for errors related to data storage or retrieval."""
 
-class OverlapError(HotelError):
-    """Exception raised when there is an overlap in bookings or reservations."""
+class ConflictError(HotelError):
+    """Exception raised for conflicts in bookings or reservations."""
+
+class OverlapError(ConflictError):
+    """Specific exception for cases where reservation dates overlap."""
     
 class RoomNotFoundError(NotFoundError):
     """Exception raised when a requested room is not found."""

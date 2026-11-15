@@ -3,7 +3,7 @@ from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 
-from .exceptions import DataValidationError
+from .exceptions import ConflictError, DataValidationError
 
 
 class ReservationStatus(Enum):
@@ -95,11 +95,9 @@ class Reservation:
         if not isinstance(check_out, date) or isinstance(check_out, datetime):
             raise DataValidationError("Check-out must be a date.")
         if check_out <= check_in:
-            raise DataValidationError("Check-out must be after check-in.")
+            raise ConflictError("Check-out must be after check-in.")
         if not isinstance (status, ReservationStatus):
             raise DataValidationError("Reservation status must be a valid ReservationStatus enum.")    
-        if check_in == check_out:
-            raise DataValidationError("Check-in and check-out cannot be the same.")
         
         self.guest = guest
         self.room = room
