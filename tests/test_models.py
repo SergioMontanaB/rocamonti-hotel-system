@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from rocamonti.exceptions import ConflictError, DataValidationError
+from rocamonti.exceptions import DataValidationError
 from rocamonti.models import (
     DocumentType,
     Guest,
@@ -36,7 +36,7 @@ def test_invalid_room_type(bad_type):
 
 @pytest.mark.parametrize(
     "bad_rate",
-    [100.0, "100", Decimal("0"), Decimal("-5"), Decimal("0.004"),
+    [100.0, "100", Decimal(0), Decimal(-5), Decimal("0.004"),
      Decimal("NaN"), Decimal("Infinity")],
 )
 def test_invalid_rate(bad_rate):
@@ -160,13 +160,13 @@ def test_valid_reservation(sample_guest, sample_room):
 def test_equal_dates(sample_guest, sample_room):
     check_in = date.today()
     check_out = check_in
-    with pytest.raises(ConflictError):
+    with pytest.raises(DataValidationError):
         Reservation(sample_guest, sample_room, check_in, check_out)
 
 def test_check_out_before_check_in(sample_guest, sample_room):
     check_in = date.today()
     check_out = check_in - timedelta(days=1)
-    with pytest.raises(ConflictError):
+    with pytest.raises(DataValidationError):
         Reservation(sample_guest, sample_room, check_in, check_out)
 
 @pytest.mark.parametrize("bad_check_in, bad_check_out", [
