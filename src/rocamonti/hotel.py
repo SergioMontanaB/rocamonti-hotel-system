@@ -9,26 +9,26 @@ class Hotel:
         self._reservations: list[Reservation] = []
 
     def add_room(self, room: Room) -> Room:
-        if room.number in self._rooms:
-            raise ConflictError("Room exists")
-        self._rooms[room.number] = room
+        if room.room_number in self._rooms:
+            raise ConflictError(f"Room {room.room_number} exists")
+        self._rooms[room.room_number] = room
         return room
 
     def get_room(self, number: int) -> Room:
         if number not in self._rooms:
-            raise RoomNotFoundError()
+            raise RoomNotFoundError(f"Room {number} not found")
         return self._rooms[number]
 
     def register_guest(self, guest: Guest) -> Guest:
-        if guest.id in self._guests:
-            raise ConflictError("Guest exists")
-        self._guests[guest.id] = guest
-        return guest
+        if guest.guest_id in self._guests:
+            raise ConflictError(f"Guest {guest.guest_id} already exists")
+        self._guests[guest.guest_id] = guest
+        return self._guests[guest.guest_id]
 
     def get_guest(self, guest_id: str) -> Guest:
         if guest_id not in self._guests:
-            raise NotFoundError("Guest not found")
+            raise NotFoundError(f"Guest {guest_id} not found")
         return self._guests[guest_id]
 
     def list_all_guests(self) -> list[Guest]:
-        return list(self._guests.values())
+        return list(self._guests.values()) 
