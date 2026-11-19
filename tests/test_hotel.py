@@ -54,5 +54,15 @@ def test_get_nonexistent_guest(hotel):
         hotel.get_guest("PASSPORT-XYZ")
 
 def test_list_all_guests(hotel, sample_guest):
+    guest2 = Guest(name="Jane Doe", email="jane@example.com", phone_number="0987654321",
+                   document_type=DocumentType.PASSPORT, document_number="B12345")
     hotel.register_guest(sample_guest)
-    assert hotel.list_all_guests() == [sample_guest]
+    hotel.register_guest(guest2)
+
+    assert hotel.list_all_guests() == [sample_guest, guest2]
+
+def test_list_all_rooms(hotel, sample_room):
+    room2 = Room(room_number=102, room_type=RoomType.SINGLE, nightly_rate=Decimal("100.00"))
+    hotel.add_room(sample_room)
+    hotel.add_room(room2)
+    assert hotel.list_all_rooms() == [sample_room, room2]

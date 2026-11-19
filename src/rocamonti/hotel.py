@@ -32,3 +32,6 @@ class Hotel:
 
     def list_all_guests(self) -> list[Guest]:
         return list(self._guests.values()) 
+    
+    def list_all_rooms(self) -> list[Room]:
+        return list(self._rooms.values())

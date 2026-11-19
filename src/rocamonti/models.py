@@ -84,8 +84,8 @@ class Guest:
 
 
 class Reservation:
-
-    def __init__(self, guest: Guest, room: Room, check_in: date, check_out: date, status=ReservationStatus.CONFIRMED):
+    reservation_counter = 0
+    def __init__(self, guest: Guest, room: Room, check_in: date, check_out: date, status=ReservationStatus.CONFIRMED, reservation_id=None):
         if not isinstance(guest, Guest):
             raise DataValidationError("Guest must be a valid Guest instance.")
         if not isinstance(room, Room):
@@ -107,13 +107,26 @@ class Reservation:
         self.status = status 
 
         self._nightly_rate_snapshot = room.nightly_rate
-    
+
+        if  reservation_id is not None:
+            if not isinstance(reservation_id, str) or not reservation_id.strip():
+                raise DataValidationError("Reservation ID must be a valid string.")
+            self._reservation_id = reservation_id.strip()
+        else:    
+            Reservation.reservation_counter += 1
+            self._reservation_id = reservation_id or f"R{Reservation.reservation_counter}"
+
+   
+    @property
+    def reservation_id(self):
+        return self._reservation_id.upper().strip()
     @property
     def nights(self) -> int:
         return (self.check_out - self.check_in).days
     @property
     def total_cost(self) -> Decimal:
         cost = self._nightly_rate_snapshot * Decimal(self.nights)
-        return cost.quantize(Decimal("0.01"))
+        return cost.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+ 
 
     

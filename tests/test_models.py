@@ -220,4 +220,33 @@ def test_total_cost_nights(sample_guest, sample_room, nights):
     res = Reservation(sample_guest, sample_room, check_in, check_out)
     assert res.nights == nights
     assert res.total_cost == sample_room.nightly_rate * nights
-    
+
+@pytest.fixture(autouse=True)
+def reset_counter():
+    Reservation.reservation_counter = 0
+    yield
+
+def test_reservation_id(sample_guest, sample_room, reset_counter):
+    res = Reservation(sample_guest, sample_room, date.today(), date.today() + timedelta(days=1))
+    res2 = Reservation(sample_guest, sample_room, date.today(), date.today() + timedelta(days=1))
+    res3 = Reservation(sample_guest, sample_room, date.today(), date.today() + timedelta(days=2))
+    assert res.reservation_id == "R1"
+    assert res2.reservation_id == "R2"
+    assert res3.reservation_id == "R3"
+
+def test_reservation_id_normalization(sample_guest, sample_room):
+    res = Reservation(sample_guest, sample_room, date.today(), date.today() + timedelta(days=1), reservation_id="  r-99  ")
+    assert res.reservation_id == "R-99"
+    assert Reservation.reservation_counter == 0
+
+@pytest.mark.parametrize("bad_id", [True, "", "   ", 123])
+def test_bad_reservation_id(sample_guest, sample_room, bad_id):
+    with pytest.raises(DataValidationError):
+        Reservation(sample_guest, sample_room, date.today(), date.today() + timedelta(days=1), reservation_id=bad_id)
+        assert Reservation.reservation_counter == 0
+
+def test_reservation_is_read_only(sample_guest, sample_room):
+        res = Reservation(sample_guest, sample_room, date.today(), date.today() + timedelta(days=1))
+        with pytest.raises(AttributeError):
+            res.reservation_id = "R100"
+            assert res.reservation_id == "R1"
