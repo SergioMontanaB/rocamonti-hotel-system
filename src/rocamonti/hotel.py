@@ -7,6 +7,7 @@ class Hotel:
         self._rooms: dict[int, Room] = {}
         self._guests: dict[str, Guest] = {}
         self._reservations: list[Reservation] = []
+        self._next_id = 1
 
     def add_room(self, room: Room) -> Room:
         if room.room_number in self._rooms:
@@ -31,7 +32,12 @@ class Hotel:
         return self._guests[guest_id]
 
     def list_all_guests(self) -> list[Guest]:
-        return list(self._guests.values()) 
-    
+        return list(self._guests.values())
+
     def list_all_rooms(self) -> list[Room]:
         return list(self._rooms.values())
+
+    def _generate_reservation_id(self) -> str:
+        reservation_id = f"R{self._next_id}"
+        self._next_id += 1
+        return reservation_id

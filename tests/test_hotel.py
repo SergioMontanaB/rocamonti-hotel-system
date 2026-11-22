@@ -11,26 +11,39 @@ from rocamonti.models import DocumentType, Guest, Room, RoomType
 def hotel():
     """Creates a hotel new and clean hotel instance."""
     return Hotel()
+
+
 @pytest.fixture
 def sample_room():
-    return Room(room_number=101, room_type=RoomType.SINGLE, nightly_rate=Decimal("100.00"))
+    return Room(
+        room_number=101, room_type=RoomType.SINGLE, nightly_rate=Decimal("100.00")
+    )
+
+
 @pytest.fixture
 def sample_guest():
-    return Guest(name="John Doe", email="john@example.com", phone_number="1234567890",
-                 document_type=DocumentType.PASSPORT, document_number="A12345")
-
-
+    return Guest(
+        name="John Doe",
+        email="john@example.com",
+        phone_number="1234567890",
+        document_type=DocumentType.PASSPORT,
+        document_number="A12345",
+    )
 
 
 def test_add_valid_room(hotel, sample_room):
     hotel.add_room(sample_room)
     assert hotel.get_room(101) == sample_room
 
+
 def test_add_duplicate_room_raises_error(hotel, sample_room):
-    room2 = Room(room_number=101, room_type=RoomType.SINGLE, nightly_rate=Decimal("100.00"))
+    room2 = Room(
+        room_number=101, room_type=RoomType.SINGLE, nightly_rate=Decimal("100.00")
+    )
     hotel.add_room(sample_room)
     with pytest.raises(ConflictError):
         hotel.add_room(room2)
+
 
 def test_get_nonexistent_room(hotel):
     with pytest.raises(RoomNotFoundError):
@@ -44,25 +57,57 @@ def test_valid_register_guest(hotel, sample_guest):
 
 def test_register_duplicate_guest(hotel, sample_guest):
     hotel.register_guest(sample_guest)
-    guest2 = Guest(name="John Doe", email="john@example.com", phone_number="1234567890",
-                   document_type=DocumentType.PASSPORT, document_number="A12345")
+    guest2 = Guest(
+        name="John Doe",
+        email="john@example.com",
+        phone_number="1234567890",
+        document_type=DocumentType.PASSPORT,
+        document_number="A12345",
+    )
     with pytest.raises(ConflictError):
         hotel.register_guest(guest2)
+
 
 def test_get_nonexistent_guest(hotel):
     with pytest.raises(NotFoundError):
         hotel.get_guest("PASSPORT-XYZ")
 
+
 def test_list_all_guests(hotel, sample_guest):
-    guest2 = Guest(name="Jane Doe", email="jane@example.com", phone_number="0987654321",
-                   document_type=DocumentType.PASSPORT, document_number="B12345")
+    guest2 = Guest(
+        name="Jane Doe",
+        email="jane@example.com",
+        phone_number="0987654321",
+        document_type=DocumentType.PASSPORT,
+        document_number="B12345",
+    )
     hotel.register_guest(sample_guest)
     hotel.register_guest(guest2)
 
     assert hotel.list_all_guests() == [sample_guest, guest2]
 
+
 def test_list_all_rooms(hotel, sample_room):
-    room2 = Room(room_number=102, room_type=RoomType.SINGLE, nightly_rate=Decimal("100.00"))
+    room2 = Room(
+        room_number=102, room_type=RoomType.SINGLE, nightly_rate=Decimal("100.00")
+    )
     hotel.add_room(sample_room)
     hotel.add_room(room2)
     assert hotel.list_all_rooms() == [sample_room, room2]
+
+
+def test_hotel_generates_reservation_ids(hotel):
+    assert hotel._generate_reservation_id() == "R1"
+    assert hotel._generate_reservation_id() == "R2"
+    assert hotel._generate_reservation_id() == "R3"
+
+
+def test_each_hotel_has_its_own_reservation_counter():
+    hotel1 = Hotel()
+    hotel2 = Hotel()
+
+    assert hotel1._generate_reservation_id() == "R1"
+    assert hotel1._generate_reservation_id() == "R2"
+
+    assert hotel2._generate_reservation_id() == "R1"
+    assert hotel2._generate_reservation_id() == "R2"
