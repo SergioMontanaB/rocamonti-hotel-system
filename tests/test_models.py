@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from rocamonti.exceptions import ConflictError, DataValidationError
+from rocamonti.exceptions import DataValidationError
 from rocamonti.models import (
     DocumentType,
     Guest,
@@ -36,19 +36,35 @@ def test_invalid_room_type(bad_type):
 
 @pytest.mark.parametrize(
     "bad_rate",
-    [100.0, "100", Decimal("0"), Decimal("-5"), Decimal("0.004"),
-     Decimal("NaN"), Decimal("Infinity")],
+    [
+        100.0,
+        "100",
+        Decimal(0),
+        Decimal(-5),
+        Decimal("0.004"),
+        Decimal("NaN"),
+        Decimal("Infinity"),
+    ],
 )
 def test_invalid_rate(bad_rate):
     with pytest.raises(DataValidationError, match="rate"):
         Room(101, RoomType.SINGLE, bad_rate)
 
+
 def test_rate_rounds_half_up():
-    assert Room(101, RoomType.SINGLE, Decimal("100.005")).nightly_rate == Decimal("100.01")
+    assert Room(101, RoomType.SINGLE, Decimal("100.005")).nightly_rate == Decimal(
+        "100.01"
+    )
 
 
 def test_valid_guest():
-    guest= Guest("John Doe","johndoe@example.com","1234567890",DocumentType.PASSPORT,"A1234567")
+    guest = Guest(
+        "John Doe",
+        "johndoe@example.com",
+        "1234567890",
+        DocumentType.PASSPORT,
+        "A1234567",
+    )
     assert guest.name == "John Doe"
     assert guest.email == "johndoe@example.com"
     assert guest.phone_number == "1234567890"
@@ -59,69 +75,117 @@ def test_valid_guest():
 @pytest.mark.parametrize("bad_name", ["", " ", None, 123])
 def test_invalid_guest_name(bad_name):
     with pytest.raises(DataValidationError, match="Name"):
-        Guest(bad_name, email="johndoe@example.com", 
-            phone_number="1234567890", 
-            document_type=DocumentType.PASSPORT, 
-            document_number="A1234567")
+        Guest(
+            bad_name,
+            email="johndoe@example.com",
+            phone_number="1234567890",
+            document_type=DocumentType.PASSPORT,
+            document_number="A1234567",
+        )
 
-@pytest.mark.parametrize("bad_email", ["", " ", None, 123, "johndoe", "johndoe@", "@example.com", 
-                                       "johndoe@example", "johndoe@example.", "john doe@example.com", "a@b..c"])
+
+@pytest.mark.parametrize(
+    "bad_email",
+    [
+        "",
+        " ",
+        None,
+        123,
+        "johndoe",
+        "johndoe@",
+        "@example.com",
+        "johndoe@example",
+        "johndoe@example.",
+        "john doe@example.com",
+        "a@b..c",
+    ],
+)
 def test_invalid_guest_email(bad_email):
     with pytest.raises(DataValidationError, match="Email"):
-        Guest(name="John Doe", email=bad_email, 
-            phone_number="1234567890", 
-            document_type=DocumentType.PASSPORT, 
-            document_number="A1234567")
+        Guest(
+            name="John Doe",
+            email=bad_email,
+            phone_number="1234567890",
+            document_type=DocumentType.PASSPORT,
+            document_number="A1234567",
+        )
 
-@pytest.mark.parametrize("bad_phone",["", " ", None, 123, "123456", "abc-def-ghij"])
+
+@pytest.mark.parametrize("bad_phone", ["", " ", None, 123, "123456", "abc-def-ghij"])
 def test_invalid_guest_phone(bad_phone):
     with pytest.raises(DataValidationError, match="Phone number"):
-        Guest(name="John Doe", email="johndoe@example.com", 
-            phone_number= bad_phone, 
-            document_type=DocumentType.PASSPORT, 
-            document_number="A1234567")
+        Guest(
+            name="John Doe",
+            email="johndoe@example.com",
+            phone_number=bad_phone,
+            document_type=DocumentType.PASSPORT,
+            document_number="A1234567",
+        )
+
 
 @pytest.mark.parametrize("bad_document_type", [None, "Passport", 123, "", " "])
 def test_invalid_guest_document_type(bad_document_type):
     with pytest.raises(DataValidationError, match="document type"):
-        Guest(name="John Doe", email="johndoe@example.com", 
-                        phone_number="1234567890", 
-                        document_type=bad_document_type, 
-                        document_number ="A1234567")
+        Guest(
+            name="John Doe",
+            email="johndoe@example.com",
+            phone_number="1234567890",
+            document_type=bad_document_type,
+            document_number="A1234567",
+        )
+
 
 @pytest.mark.parametrize("bad_document_number", ["", " ", None, 123])
 def test_invalid_guest_document_number(bad_document_number):
-    with pytest.raises(DataValidationError, match= "Document number"):
-        Guest(name="John Doe", email="johndoe@example.com", 
-                phone_number="1234567890", 
-                document_type=DocumentType.PASSPORT, 
-                document_number =bad_document_number)
+    with pytest.raises(DataValidationError, match="Document number"):
+        Guest(
+            name="John Doe",
+            email="johndoe@example.com",
+            phone_number="1234567890",
+            document_type=DocumentType.PASSPORT,
+            document_number=bad_document_number,
+        )
 
 
-@pytest.mark.parametrize("email, raw_phone, expected_clean_phone", [("nombre.apellido+tag@dominio.co", "+573001234567", "+573001234567"),
+@pytest.mark.parametrize(
+    "email, raw_phone, expected_clean_phone",
+    [
+        ("nombre.apellido+tag@dominio.co", "+573001234567", "+573001234567"),
         ("user123@sub.domain.org", "+1-800-555-0199", "+18005550199"),
-        ("test@example.com", "(123) 456-7890", "1234567890")]) 
-
+        ("test@example.com", "(123) 456-7890", "1234567890"),
+    ],
+)
 def test_valid_guest_special_formats(email, raw_phone, expected_clean_phone):
-    guest = Guest(name="Jane Doe", email=email, 
-                  phone_number=raw_phone, 
-                  document_type=DocumentType.COLOMBIAN_ID_CARD, 
-                  document_number="A1234567")
+    guest = Guest(
+        name="Jane Doe",
+        email=email,
+        phone_number=raw_phone,
+        document_type=DocumentType.COLOMBIAN_ID_CARD,
+        document_number="A1234567",
+    )
     assert guest.email == email.lower()
     assert guest.phone_number == expected_clean_phone
+
+
 def test_actual_phone_format():
-    guest = Guest(name="Jane Doe", email="jane@example.com", 
-                  phone_number="310 762 8219", 
-                  document_type=DocumentType.COLOMBIAN_ID_CARD, 
-                  document_number="A1234567")
+    guest = Guest(
+        name="Jane Doe",
+        email="jane@example.com",
+        phone_number="310 762 8219",
+        document_type=DocumentType.COLOMBIAN_ID_CARD,
+        document_number="A1234567",
+    )
     assert guest.phone_number == "3107628219"
 
 
 def test_guest_normalization():
-    guest = Guest(name=" John Doe ", email="John.Doe@Example.com", 
-                  phone_number=" 123-456-7890 ", 
-                  document_type=DocumentType.PASSPORT, 
-                  document_number=" a1234567 ")
+    guest = Guest(
+        name=" John Doe ",
+        email="John.Doe@Example.com",
+        phone_number=" 123-456-7890 ",
+        document_type=DocumentType.PASSPORT,
+        document_number=" a1234567 ",
+    )
     assert guest.name == "John Doe"
     assert guest.email == "john.doe@example.com"
     assert guest.phone_number == "1234567890"
@@ -129,27 +193,36 @@ def test_guest_normalization():
 
 
 def test_guest_id_property():
-    guest = Guest(name="John Doe", email="johndoe@example.com", 
-                  phone_number="1234567890", 
-                  document_type=DocumentType.PASSPORT, 
-                  document_number="A1234567")
+    guest = Guest(
+        name="John Doe",
+        email="johndoe@example.com",
+        phone_number="1234567890",
+        document_type=DocumentType.PASSPORT,
+        document_number="A1234567",
+    )
     assert guest.guest_id == "PASSPORT-A1234567"
-
-
-
 
 
 @pytest.fixture
 def sample_guest():
-    return Guest("John Doe", "johndoe@example.com", "1234567890", DocumentType.PASSPORT, "A1234567")
+    return Guest(
+        "John Doe",
+        "johndoe@example.com",
+        "1234567890",
+        DocumentType.PASSPORT,
+        "A1234567",
+    )
+
+
 @pytest.fixture
 def sample_room():
     return Room(101, RoomType.SINGLE, Decimal("150000.00"))
 
+
 def test_valid_reservation(sample_guest, sample_room):
     check_in = date.today() + timedelta(days=1)
     check_out = check_in + timedelta(days=2)
-    res = Reservation(sample_guest, sample_room,check_in, check_out)
+    res = Reservation(sample_guest, sample_room, check_in, check_out)
 
     assert res.guest == sample_guest
     assert res.room == sample_room
@@ -157,28 +230,35 @@ def test_valid_reservation(sample_guest, sample_room):
     assert res.total_cost == Decimal("300000.00")
     assert res.status == ReservationStatus.CONFIRMED
 
+
 def test_equal_dates(sample_guest, sample_room):
     check_in = date.today()
     check_out = check_in
-    with pytest.raises(ConflictError):
+    with pytest.raises(DataValidationError):
         Reservation(sample_guest, sample_room, check_in, check_out)
+
 
 def test_check_out_before_check_in(sample_guest, sample_room):
     check_in = date.today()
     check_out = check_in - timedelta(days=1)
-    with pytest.raises(ConflictError):
+    with pytest.raises(DataValidationError):
         Reservation(sample_guest, sample_room, check_in, check_out)
 
-@pytest.mark.parametrize("bad_check_in, bad_check_out", [
-    ("2024-01-01", "2024-01-02"),
-    (123, 456),
-    (None, None),
-    ("2024-01-01", None),
-    (datetime.now(), datetime.now() + timedelta(days=1))
-])
+
+@pytest.mark.parametrize(
+    "bad_check_in, bad_check_out",
+    [
+        ("2024-01-01", "2024-01-02"),
+        (123, 456),
+        (None, None),
+        ("2024-01-01", None),
+        (datetime.now(), datetime.now() + timedelta(days=1)),
+    ],
+)
 def test_bad_date(sample_guest, sample_room, bad_check_in, bad_check_out):
     with pytest.raises(DataValidationError):
         Reservation(sample_guest, sample_room, bad_check_in, bad_check_out)
+
 
 def test_one_night_reservation(sample_guest, sample_room):
     check_in = date.today() + timedelta(days=1)
@@ -189,20 +269,34 @@ def test_one_night_reservation(sample_guest, sample_room):
     assert res.nights == 1
     assert res.total_cost == sample_room.nightly_rate
 
+
 @pytest.mark.parametrize("bad_guest", [None, "NotAGuest", 123])
 def test_bad_guest(sample_room, bad_guest):
     with pytest.raises(DataValidationError):
-        Reservation(bad_guest, sample_room, date.today(), date.today() + timedelta(days=1))
+        Reservation(
+            bad_guest, sample_room, date.today(), date.today() + timedelta(days=1)
+        )
+
 
 @pytest.mark.parametrize("bad_room", [None, "NotARoom", 123])
 def test_bad_room(sample_guest, bad_room):
     with pytest.raises(DataValidationError):
-        Reservation(sample_guest, bad_room, date.today(), date.today() + timedelta(days=1))
+        Reservation(
+            sample_guest, bad_room, date.today(), date.today() + timedelta(days=1)
+        )
+
 
 @pytest.mark.parametrize("bad_status", [None, "NotAStatus", 123])
 def test_bad_status(sample_guest, sample_room, bad_status):
     with pytest.raises(DataValidationError):
-        Reservation(sample_guest, sample_room, date.today(), date.today() + timedelta(days=1), status=bad_status)
+        Reservation(
+            sample_guest,
+            sample_room,
+            date.today(),
+            date.today() + timedelta(days=1),
+            status=bad_status,
+        )
+
 
 def test_reservation_rate_snapshot(sample_guest, sample_room):
     check_in = date.today()
@@ -213,6 +307,7 @@ def test_reservation_rate_snapshot(sample_guest, sample_room):
     sample_room.nightly_rate = Decimal("100000.00")
     assert res.total_cost == Decimal("300000.00")
 
+
 @pytest.mark.parametrize("nights", [1, 2, 3])
 def test_total_cost_nights(sample_guest, sample_room, nights):
     check_in = date.today()
@@ -220,4 +315,51 @@ def test_total_cost_nights(sample_guest, sample_room, nights):
     res = Reservation(sample_guest, sample_room, check_in, check_out)
     assert res.nights == nights
     assert res.total_cost == sample_room.nightly_rate * nights
-    
+
+
+def test_reservation_without_id(sample_guest, sample_room):
+    res = Reservation(
+        sample_guest,
+        sample_room,
+        date.today(),
+        date.today() + timedelta(days=1),
+    )
+
+    assert res.reservation_id is None
+
+
+def test_reservation_id_normalization(sample_guest, sample_room):
+    res = Reservation(
+        sample_guest,
+        sample_room,
+        date.today(),
+        date.today() + timedelta(days=1),
+        reservation_id="  r-99  ",
+    )
+    assert res.reservation_id == "R-99"
+
+
+@pytest.mark.parametrize("bad_id", [True, "", "   ", 123])
+def test_bad_reservation_id(sample_guest, sample_room, bad_id):
+    with pytest.raises(DataValidationError):
+        Reservation(
+            sample_guest,
+            sample_room,
+            date.today(),
+            date.today() + timedelta(days=1),
+            reservation_id=bad_id,
+        )
+
+
+def test_reservation_is_read_only(sample_guest, sample_room):
+    res = Reservation(
+        sample_guest,
+        sample_room,
+        date.today(),
+        date.today() + timedelta(days=1),
+        reservation_id="R1",
+    )
+
+    with pytest.raises(AttributeError):
+        res.reservation_id = "R100"
+    assert res.reservation_id == "R1"

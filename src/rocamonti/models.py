@@ -3,7 +3,7 @@ from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 
-from .exceptions import ConflictError, DataValidationError
+from .exceptions import DataValidationError
 
 
 class ReservationStatus(Enum):
@@ -19,12 +19,15 @@ class RoomType(Enum):
     APARTMENT = "Apartment"
     FAMILY = "Family"
 
+
 EMAIL_REGEX = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+(\.[a-zA-Z0-9-]+)+"
 PHONE_REGEX = r"\+?[0-9]{7,15}"
 
 
 class Room:
-    def __init__(self, room_number: int, room_type: RoomType, nightly_rate: Decimal) -> None:
+    def __init__(
+        self, room_number: int, room_type: RoomType, nightly_rate: Decimal
+    ) -> None:
 
         if not isinstance(room_number, int) or isinstance(room_number, bool):
             raise DataValidationError("Room number must be an integer.")
@@ -46,29 +49,35 @@ class Room:
         self.nightly_rate = rate
 
 
-
 class DocumentType(Enum):
     PASSPORT = "Passport"
     COLOMBIAN_ID_CARD = "ID Card"
 
 
 class Guest:
-    def __init__(self, name: str, email: str, phone_number: str, document_type: DocumentType, document_number: str) -> None:
+    def __init__(
+        self,
+        name: str,
+        email: str,
+        phone_number: str,
+        document_type: DocumentType,
+        document_number: str,
+    ) -> None:
         if not isinstance(name, str) or not name.strip():
             raise DataValidationError("Name must be a non-empty string.")
-        
+
         if not isinstance(email, str) or not re.fullmatch(EMAIL_REGEX, email.strip()):
             raise DataValidationError("Email must be a valid email address.")
-        
-        if not isinstance(phone_number, str):   
+
+        if not isinstance(phone_number, str):
             raise DataValidationError("Phone number must have a valid format.")
         cleaned_phone = re.sub(r"[ \.\-\(\)]", "", phone_number).strip()
         if not re.fullmatch(PHONE_REGEX, cleaned_phone):
             raise DataValidationError("Phone number must have a valid format.")
-        
+
         if not isinstance(document_type, DocumentType):
             raise DataValidationError("Invalid document type.")
-        
+
         if not isinstance(document_number, str) or not document_number.strip():
             raise DataValidationError("Document number must be a non-empty string.")
 
@@ -84,8 +93,15 @@ class Guest:
 
 
 class Reservation:
-
-    def __init__(self, guest: Guest, room: Room, check_in: date, check_out: date, status=ReservationStatus.CONFIRMED):
+    def __init__(
+        self,
+        guest: Guest,
+        room: Room,
+        check_in: date,
+        check_out: date,
+        status=ReservationStatus.CONFIRMED,
+        reservation_id: str | None = None,
+    ) -> None:
         if not isinstance(guest, Guest):
             raise DataValidationError("Guest must be a valid Guest instance.")
         if not isinstance(room, Room):
@@ -95,25 +111,37 @@ class Reservation:
         if not isinstance(check_out, date) or isinstance(check_out, datetime):
             raise DataValidationError("Check-out must be a date.")
         if check_out <= check_in:
-            raise ConflictError("Check-out must be after check-in.")
-        if not isinstance (status, ReservationStatus):
-            raise DataValidationError("Reservation status must be a valid ReservationStatus enum.")    
-        
+            raise DataValidationError("Check-out must be after check-in.")
+        if not isinstance(status, ReservationStatus):
+            raise DataValidationError(
+                "Reservation status must be a valid ReservationStatus enum."
+            )
+
         self.guest = guest
         self.room = room
         self.check_in = check_in
         self.check_out = check_out
-       
-        self.status = status 
+
+        self.status = status
 
         self._nightly_rate_snapshot = room.nightly_rate
-    
+
+
+        self._reservation_id: str | None = None
+        if reservation_id is not None:
+            if not isinstance(reservation_id, str) or not reservation_id.strip():
+                raise DataValidationError("Reservation ID must be a valid string.")
+            self._reservation_id = reservation_id.strip().upper()
+
+    @property
+    def reservation_id(self) -> str | None:
+        return self._reservation_id
+
     @property
     def nights(self) -> int:
         return (self.check_out - self.check_in).days
+
     @property
     def total_cost(self) -> Decimal:
         cost = self._nightly_rate_snapshot * Decimal(self.nights)
-        return cost.quantize(Decimal("0.01"))
-
-    
+        return cost.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
