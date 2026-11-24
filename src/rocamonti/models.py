@@ -88,7 +88,7 @@ class Guest:
         self.document_number = document_number.strip().upper()
 
     @property
-    def guest_id(self):
+    def guest_id(self) -> str:
         return f"{self.document_type.name}-{self.document_number}"
 
 

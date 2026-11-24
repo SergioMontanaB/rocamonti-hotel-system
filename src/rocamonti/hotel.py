@@ -1,5 +1,7 @@
+from datetime import date
+
 from .exceptions import ConflictError, NotFoundError, RoomNotFoundError
-from .models import Guest, Reservation, Room
+from .models import Guest, Reservation, ReservationStatus, Room
 
 
 class Hotel:
@@ -41,3 +43,16 @@ class Hotel:
         reservation_id = f"R{self._next_id}"
         self._next_id += 1
         return reservation_id
+
+    def is_room_available(self, room_number: int, check_in: date, check_out: date) -> bool:
+        room = self._rooms.get(room_number)
+        if room is None:
+            return False
+        for r in self._reservations:
+            if (
+                r.room == room
+                and r.status != ReservationStatus.CANCELLED
+                and not (check_out <= r.check_in or check_in >= r.check_out)
+            ):
+                    return False
+        return True
