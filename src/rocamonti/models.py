@@ -126,7 +126,6 @@ class Reservation:
 
         self._nightly_rate_snapshot = room.nightly_rate
 
-
         self._reservation_id: str | None = None
         if reservation_id is not None:
             if not isinstance(reservation_id, str) or not reservation_id.strip():

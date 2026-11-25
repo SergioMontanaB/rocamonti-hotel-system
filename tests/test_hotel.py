@@ -3,7 +3,12 @@ from decimal import Decimal
 
 import pytest
 
-from rocamonti.exceptions import ConflictError, NotFoundError, RoomNotFoundError
+from rocamonti.exceptions import (
+    ConflictError,
+    DataValidationError,
+    NotFoundError,
+    RoomNotFoundError,
+)
 from rocamonti.hotel import Hotel
 from rocamonti.models import (
     DocumentType,
@@ -39,12 +44,12 @@ def sample_guest():
     )
 
 
-def test_add_valid_room(hotel, sample_room):
+def test_add_valid_room(hotel: Hotel, sample_room: Room):
     hotel.add_room(sample_room)
     assert hotel.get_room(101) == sample_room
 
 
-def test_add_duplicate_room_raises_error(hotel, sample_room):
+def test_add_duplicate_room_raises_error(hotel: Hotel, sample_room: Room):
     room2 = Room(
         room_number=101, room_type=RoomType.SINGLE, nightly_rate=Decimal("100.00")
     )
@@ -53,17 +58,17 @@ def test_add_duplicate_room_raises_error(hotel, sample_room):
         hotel.add_room(room2)
 
 
-def test_get_nonexistent_room(hotel):
+def test_get_nonexistent_room(hotel: Hotel):
     with pytest.raises(RoomNotFoundError):
         hotel.get_room(999)
 
 
-def test_valid_register_guest(hotel, sample_guest):
+def test_valid_register_guest(hotel: Hotel, sample_guest: Guest):
     hotel.register_guest(sample_guest)
     assert hotel.get_guest("PASSPORT-A12345") == sample_guest
 
 
-def test_register_duplicate_guest(hotel, sample_guest):
+def test_register_duplicate_guest(hotel: Hotel, sample_guest: Guest):
     hotel.register_guest(sample_guest)
     guest2 = Guest(
         name="John Doe",
@@ -76,12 +81,12 @@ def test_register_duplicate_guest(hotel, sample_guest):
         hotel.register_guest(guest2)
 
 
-def test_get_nonexistent_guest(hotel):
+def test_get_nonexistent_guest(hotel: Hotel):
     with pytest.raises(NotFoundError):
         hotel.get_guest("PASSPORT-XYZ")
 
 
-def test_list_all_guests(hotel, sample_guest):
+def test_list_all_guests(hotel: Hotel, sample_guest: Guest):
     guest2 = Guest(
         name="Jane Doe",
         email="jane@example.com",
@@ -95,7 +100,7 @@ def test_list_all_guests(hotel, sample_guest):
     assert hotel.list_all_guests() == [sample_guest, guest2]
 
 
-def test_list_all_rooms(hotel, sample_room):
+def test_list_all_rooms(hotel: Hotel, sample_room: Room):
     room2 = Room(
         room_number=102, room_type=RoomType.SINGLE, nightly_rate=Decimal("100.00")
     )
@@ -104,7 +109,7 @@ def test_list_all_rooms(hotel, sample_room):
     assert hotel.list_all_rooms() == [sample_room, room2]
 
 
-def test_hotel_generates_reservation_ids(hotel):
+def test_hotel_generates_reservation_ids(hotel: Hotel):
     assert hotel._generate_reservation_id() == "R1"
     assert hotel._generate_reservation_id() == "R2"
     assert hotel._generate_reservation_id() == "R3"
@@ -120,19 +125,25 @@ def test_each_hotel_has_its_own_reservation_counter():
     assert hotel2._generate_reservation_id() == "R1"
     assert hotel2._generate_reservation_id() == "R2"
 
+
 @pytest.fixture
-def availability_hotel(sample_guest):
+def availability_hotel(sample_guest: Guest):
     hotel = Hotel()
     room_101 = Room(
-        room_number= 101, room_type=RoomType.SINGLE, nightly_rate=Decimal("100.00")
+        room_number=101, room_type=RoomType.SINGLE, nightly_rate=Decimal("100.00")
     )
     hotel._rooms[room_101.room_number] = room_101
 
-    reservation = Reservation(sample_guest, room= room_101, check_in= date(2026, 6, 10),
-                               check_out= date(2026, 6, 15),
-                               status=ReservationStatus.CONFIRMED,)
+    reservation = Reservation(
+        sample_guest,
+        room=room_101,
+        check_in=date(2026, 6, 10),
+        check_out=date(2026, 6, 15),
+        status=ReservationStatus.CONFIRMED,
+    )
     hotel._reservations.append(reservation)
     return hotel
+
 
 ROOM_101_CASES = [
     pytest.param(date(2026, 6, 5), date(2026, 6, 12), False, id="overlaps_start"),
@@ -146,12 +157,15 @@ ROOM_101_CASES = [
     pytest.param(date(2026, 6, 16), date(2026, 6, 20), True, id="completely_after"),
 ]
 
+
 @pytest.mark.parametrize("check_in, check_out, expected", ROOM_101_CASES)
-def test_room_101_availability(availability_hotel, check_in, check_out, expected):
+def test_room_101_availability(
+    availability_hotel: Hotel, check_in: date, check_out: date, expected: bool
+):
     assert availability_hotel.is_room_available(101, check_in, check_out) is expected
 
 
-def test_different_room_is_available(availability_hotel):
+def test_different_room_is_available(availability_hotel: Hotel):
     room_102 = Room(
         room_number=102,
         room_type=RoomType.SINGLE,
@@ -159,14 +173,61 @@ def test_different_room_is_available(availability_hotel):
     )
     availability_hotel._rooms[room_102.room_number] = room_102
 
-    assert availability_hotel.is_room_available(
-        room_102.room_number, date(2026, 6, 10), date(2026, 6, 15)
-    ) is True
+    assert (
+        availability_hotel.is_room_available(
+            room_102.room_number, date(2026, 6, 10), date(2026, 6, 15)
+        )
+        is True
+    )
 
 
-def test_cancelled_reservation_does_not_block_room(availability_hotel):
+def test_cancelled_reservation_does_not_block_room(availability_hotel: Hotel):
     availability_hotel._reservations[0].status = ReservationStatus.CANCELLED
 
-    assert availability_hotel.is_room_available(
-        101, date(2026, 6, 10), date(2026, 6, 15)
-    ) is True
+    assert (
+        availability_hotel.is_room_available(101, date(2026, 6, 10), date(2026, 6, 15))
+        is True
+    )
+
+
+def test_is_room_available_nonexistent_room_raises_error(availability_hotel: Hotel):
+    with pytest.raises(RoomNotFoundError):
+        availability_hotel.is_room_available(
+            room_number=999,
+            check_in=date(2026, 12, 1),
+            check_out=date(2026, 12, 5),
+        )
+
+
+@pytest.mark.parametrize(
+    ("check_in", "check_out"),
+    [
+        (date(2026, 12, 5), date(2026, 12, 5)),
+        (date(2026, 12, 10), date(2026, 12, 5)),
+    ],
+)
+def test_is_room_available_invalid_date_range(
+    availability_hotel: Hotel, check_in: date, check_out: date
+) -> None:
+    with pytest.raises(DataValidationError):
+        availability_hotel.is_room_available(
+            room_number=101,
+            check_in=check_in,
+            check_out=check_out,
+        )
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        ReservationStatus.CHECKED_IN,
+        ReservationStatus.CHECKED_OUT,
+    ],
+)
+def test_is_room_available_blocks_active_and_checked_out_reservations(
+    availability_hotel: Hotel, status: ReservationStatus
+) -> None:
+    assert (
+        availability_hotel.is_room_available(101, date(2026, 6, 10), date(2026, 6, 15))
+        is False
+    )

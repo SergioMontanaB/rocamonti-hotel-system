@@ -1,6 +1,11 @@
 from datetime import date
 
-from .exceptions import ConflictError, NotFoundError, RoomNotFoundError
+from .exceptions import (
+    ConflictError,
+    DataValidationError,
+    NotFoundError,
+    RoomNotFoundError,
+)
 from .models import Guest, Reservation, ReservationStatus, Room
 
 
@@ -44,15 +49,19 @@ class Hotel:
         self._next_id += 1
         return reservation_id
 
-    def is_room_available(self, room_number: int, check_in: date, check_out: date) -> bool:
-        room = self._rooms.get(room_number)
-        if room is None:
-            return False
+    def is_room_available(
+        self, room_number: int, check_in: date, check_out: date
+    ) -> bool:
+        if check_in >= check_out:
+            raise DataValidationError("Check-in must be before check-out")
+
+        self.get_room(room_number)
         for r in self._reservations:
             if (
-                r.room == room
+                r.room.room_number == room_number
                 and r.status != ReservationStatus.CANCELLED
-                and not (check_out <= r.check_in or check_in >= r.check_out)
+                and check_in < r.check_out
+                and r.check_in < check_out
             ):
-                    return False
+                return False
         return True
