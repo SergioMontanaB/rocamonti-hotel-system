@@ -7,6 +7,7 @@ from rocamonti.exceptions import (
     ConflictError,
     DataValidationError,
     NotFoundError,
+    OverlapError,
     RoomNotFoundError,
 )
 from rocamonti.hotel import Hotel
@@ -25,13 +26,18 @@ def hotel():
     """Creates a hotel new and clean hotel instance."""
     return Hotel()
 
-
 @pytest.fixture
 def sample_room():
     return Room(
         room_number=101, room_type=RoomType.SINGLE, nightly_rate=Decimal("100.00")
     )
 
+@pytest.fixture
+def booked_hotel(sample_guest: Guest, sample_room: Room) -> Hotel:
+    hotel = Hotel()
+    hotel.add_room(sample_room)
+    hotel.register_guest(sample_guest)
+    return hotel
 
 @pytest.fixture
 def sample_guest():
@@ -127,22 +133,15 @@ def test_each_hotel_has_its_own_reservation_counter():
 
 
 @pytest.fixture
-def availability_hotel(sample_guest: Guest):
-    hotel = Hotel()
-    room_101 = Room(
-        room_number=101, room_type=RoomType.SINGLE, nightly_rate=Decimal("100.00")
-    )
-    hotel._rooms[room_101.room_number] = room_101
-
-    reservation = Reservation(
-        sample_guest,
-        room=room_101,
+def availability_hotel(booked_hotel: Hotel) -> Hotel:
+    booked_hotel.create_reservation(
+        guest_id="PASSPORT-A12345",
+        room_number=101,
         check_in=date(2026, 6, 10),
         check_out=date(2026, 6, 15),
-        status=ReservationStatus.CONFIRMED,
+        today=date(2026, 1, 1),
     )
-    hotel._reservations.append(reservation)
-    return hotel
+    return booked_hotel
 
 
 ROOM_101_CASES = [
@@ -165,13 +164,13 @@ def test_room_101_availability(
     assert availability_hotel.is_room_available(101, check_in, check_out) is expected
 
 
-def test_different_room_is_available(availability_hotel: Hotel):
+def test_different_room_is_available(availability_hotel: Hotel) -> None:
     room_102 = Room(
         room_number=102,
         room_type=RoomType.SINGLE,
         nightly_rate=Decimal("100.00"),
     )
-    availability_hotel._rooms[room_102.room_number] = room_102
+    availability_hotel.add_room(room_102)
 
     assert (
         availability_hotel.is_room_available(
@@ -181,8 +180,8 @@ def test_different_room_is_available(availability_hotel: Hotel):
     )
 
 
-def test_cancelled_reservation_does_not_block_room(availability_hotel: Hotel):
-    availability_hotel._reservations[0].status = ReservationStatus.CANCELLED
+def test_cancelled_reservation_does_not_block_room(availability_hotel: Hotel) -> None:
+    availability_hotel.reservations[0].status = ReservationStatus.CANCELLED
 
     assert (
         availability_hotel.is_room_available(101, date(2026, 6, 10), date(2026, 6, 15))
@@ -190,7 +189,7 @@ def test_cancelled_reservation_does_not_block_room(availability_hotel: Hotel):
     )
 
 
-def test_is_room_available_nonexistent_room_raises_error(availability_hotel: Hotel):
+def test_is_room_available_nonexistent_room_raises_error(availability_hotel: Hotel) -> None:
     with pytest.raises(RoomNotFoundError):
         availability_hotel.is_room_available(
             room_number=999,
@@ -218,16 +217,119 @@ def test_is_room_available_invalid_date_range(
 
 
 @pytest.mark.parametrize(
-    "status",
+    ("status", "expected"),
     [
-        ReservationStatus.CHECKED_IN,
-        ReservationStatus.CHECKED_OUT,
+        (ReservationStatus.CHECKED_IN, False),
+        (ReservationStatus.CHECKED_OUT, False),
+        (ReservationStatus.CONFIRMED, False),
+        (ReservationStatus.CANCELLED, True),
     ],
 )
-def test_is_room_available_blocks_active_and_checked_out_reservations(
-    availability_hotel: Hotel, status: ReservationStatus
+def test_is_room_available_by_reservation_status(
+    availability_hotel: Hotel, status: ReservationStatus, expected: bool
 ) -> None:
+    reservation = availability_hotel.reservations[0]
+    reservation.status = status
+    
     assert (
-        availability_hotel.is_room_available(101, date(2026, 6, 10), date(2026, 6, 15))
+        availability_hotel.is_room_available(
+            101,
+            date(2026, 6, 10),
+            date(2026, 6, 15),
+        )
+        is expected
+    )
+
+
+
+
+def test_nonexistent_guest(availability_hotel: Hotel) -> None:
+    with pytest.raises(NotFoundError):
+        availability_hotel.create_reservation(
+            guest_id="nonexistent",
+            room_number=101,
+            check_in=date(2026, 1, 2),
+            check_out=date(2026, 1, 3),
+            today=date(2026, 1, 1),
+        )
+
+def test_nonexistent_room(availability_hotel: Hotel) -> None:
+    with pytest.raises(RoomNotFoundError):
+        availability_hotel.create_reservation(
+            guest_id="PASSPORT-A12345",
+            room_number=999,
+            check_in=date(2026, 1, 2),
+            check_out=date(2026, 1, 3),
+            today=date(2026, 1, 1),
+        )
+
+def test_check_in_in_past(availability_hotel: Hotel) -> None:
+    with pytest.raises(DataValidationError):
+        availability_hotel.create_reservation(
+            guest_id="PASSPORT-A12345",
+            room_number=101,
+            check_in=date(2025, 12, 31),
+            check_out=date(2026, 1, 2),
+            today=date(2026, 1, 1),
+        )
+def test_room_overlap(availability_hotel: Hotel) -> None:
+    with pytest.raises(OverlapError):
+        availability_hotel.create_reservation(
+            guest_id="PASSPORT-A12345",
+            room_number=101,
+            check_in=date(2026, 6, 10),
+            check_out=date(2026, 6, 15),
+            today=date(2026, 6, 1),
+        )
+    
+def test_create_reservation_success(booked_hotel) -> None:
+    reservation = booked_hotel.create_reservation(
+        guest_id="PASSPORT-A12345",
+        room_number=101,
+        check_in=date(2026, 7, 1),
+        check_out=date(2026, 7, 5),
+        today=date(2026, 6, 30),
+    )
+    assert reservation.reservation_id == "R1"
+    assert reservation.status == ReservationStatus.CONFIRMED
+    assert reservation.total_cost == (
+        booked_hotel.get_room(101).nightly_rate * 4
+    )
+    assert (
+        booked_hotel.is_room_available(
+            101, date(2026, 7, 1), date(2026, 7, 5)
+        )
         is False
     )
+    assert reservation in booked_hotel.reservations
+
+
+def test_create_reservation_after_previous_reservation(booked_hotel) -> None:
+    first_reservation = booked_hotel.create_reservation(
+        guest_id="PASSPORT-A12345",
+        room_number=101,
+        check_in=date(2026, 7, 6),
+        check_out=date(2026, 7, 10),
+        today=date(2026, 7, 5),
+    )
+    assert first_reservation.reservation_id == "R1"
+
+    with pytest.raises(OverlapError) :
+        booked_hotel.create_reservation(
+            guest_id="PASSPORT-A12345",
+            room_number=101,
+            check_in=date(2026, 7, 8),
+            check_out=date(2026, 7, 12),
+            today=date(2026, 7, 5),
+         )
+
+    second_reservation = booked_hotel.create_reservation(
+        guest_id="PASSPORT-A12345",
+        room_number=101,
+        check_in=date(2026, 7, 10),
+        check_out=date(2026, 7, 15),
+        today=date(2026, 7, 5),
+        )
+    assert second_reservation.reservation_id == "R2"
+
+
